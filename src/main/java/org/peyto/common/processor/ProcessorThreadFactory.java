@@ -18,7 +18,7 @@ public interface ProcessorThreadFactory {
             long threadId,
             T configurationObject,
             ProcessorThreadListener threadStatusChangeListener,
-            ReplayData replayData
+            ReplayData<T> replayData
     );
 
     <T> ProcessorThread createSimulationManual(

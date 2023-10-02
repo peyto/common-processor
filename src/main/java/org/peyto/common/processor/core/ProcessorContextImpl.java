@@ -6,13 +6,14 @@ import org.peyto.common.processor.core.schedule.ProcessorScheduler;
 
 import java.util.concurrent.atomic.AtomicLong;
 
-public class ProcessorContextImpl implements ProcessorContext {
+public class ProcessorContextImpl implements InternalProcessorContext {
 
     private final long threadId;
     private final ProcessorScheduler scheduler;
 
     private final ProcessorTimeProvider processorTimeProvider;
     private final AtomicLong currentCycleTimeMillis = new AtomicLong();
+    private final AtomicLong currentCycleNumber = new AtomicLong(0);
 
     private final long processorEndTimeMillis;
 
@@ -23,9 +24,20 @@ public class ProcessorContextImpl implements ProcessorContext {
         this.processorEndTimeMillis = processorEndTimeMillis;
     }
 
+    @Override
+    public long calculateNextCycleNumber() {
+        return currentCycleNumber.incrementAndGet();
+    }
+
+    @Override
     public long calculateNextCycleTime() {
         currentCycleTimeMillis.set(processorTimeProvider.getMillis());
         return currentCycleTimeMillis.get();
+    }
+
+    @Override
+    public long getCycleNumber() {
+        return currentCycleNumber.get();
     }
 
     @Override

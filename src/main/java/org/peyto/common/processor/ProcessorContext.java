@@ -17,6 +17,12 @@ public interface ProcessorContext {
 
     long getCycleTimeMillis();
 
+    /**
+     * @return unique cycle id (incrementing number), as we might have multiple processors executions for the same
+     * millisecond, we need some id for deterministic replay
+     */
+    long getCycleNumber();
+
     long processorEndTimeMillis();
 
 

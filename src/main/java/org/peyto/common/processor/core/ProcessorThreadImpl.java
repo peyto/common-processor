@@ -29,7 +29,7 @@ class ProcessorThreadImpl<T> extends Thread implements ProcessorThread, Processo
     private final ProcessorThreadListener threadStatusChangeListener;
 
     private final Processor processor;
-    private final ProcessorContextImpl context;
+    private final InternalProcessorContext context;
 
 
     private final Object syncObj = new Object();
@@ -63,6 +63,22 @@ class ProcessorThreadImpl<T> extends Thread implements ProcessorThread, Processo
         this.processorScheduler = processorScheduler;
     }
 
+    public ProcessorThreadImpl(ProcessorProvider<T> processorProvider,
+                               ThreadGroup parentThreadGroup,
+                               Long threadId,
+                               T configurationObject,
+                               InternalProcessorContext processorContext,
+                               ProcessorScheduler processorScheduler,
+                               ProcessorThreadListener threadStatusChangeListener) {
+        super(parentThreadGroup, "processor-"+threadId);
+        this.customThreadId = threadId != null ? threadId : super.getId();
+        processorScheduler.registerThread(customThreadId, this);
+        this.processor = processorProvider.get(configurationObject, this);
+        this.context = processorContext;
+        this.threadStatusChangeListener = threadStatusChangeListener;
+        this.processorScheduler = processorScheduler;
+    }
+
     @Override
     public void onInput(int index, Object input) {
         checkArg(index < inputs.size(), "Received input %d, but only registered %d", index, inputs.size());
@@ -82,8 +98,9 @@ class ProcessorThreadImpl<T> extends Thread implements ProcessorThread, Processo
     @Override
     public void run() {
         processor.init(context);
-        while (context.calculateNextCycleTime() < context.processorEndTimeMillis() && !stoppingProcessor.get()) {
+        while (context.calculateNextCycleTime() <= context.processorEndTimeMillis() && !stoppingProcessor.get()) {
             try {
+                context.calculateNextCycleNumber();
                 ProcessorResult result = processor.process(context);
                 if (result == ProcessorResult.END) {
                     log.info("Processor task {} is finishing", customThreadId);

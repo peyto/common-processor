@@ -8,6 +8,7 @@ import org.peyto.common.processor.ProcessorTimeProvider;
 import org.peyto.common.processor.core.schedule.ProcessorScheduler;
 import org.peyto.common.processor.simulation.ManualSimulationController;
 import org.peyto.common.processor.simulation.ReplayData;
+import org.peyto.common.processor.simulation.SimulationContext;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
@@ -19,7 +20,10 @@ public class ProcessorThreadFactoryImpl implements ProcessorThreadFactory {
     private final ProcessorScheduler processorScheduler;
     private final ProcessorTimeProvider processorTimeProvider;
 
+    @SuppressWarnings("rawtypes")
     private final Map<Class, ThreadGroup> threadGroups = new ConcurrentHashMap<>();
+
+    private final ThreadGroup simulationThreadGroup = new ThreadGroup("simulation-processor");
 
     public ProcessorThreadFactoryImpl(ProcessorScheduler processorScheduler, ProcessorTimeProvider processorTimeProvider) {
         this.processorScheduler = processorScheduler;
@@ -41,8 +45,18 @@ public class ProcessorThreadFactoryImpl implements ProcessorThreadFactory {
     }
 
     @Override
-    public <T> ProcessorThread createSimulationReplay(ProcessorProvider<T> processorProvider, long threadId, T configurationObject, ProcessorThreadListener threadStatusChangeListener, ReplayData replayData) {
-        throw new RuntimeException("Simulation Replay is not implemented at the moment");
+    public <T> ProcessorThread createSimulationReplay(ProcessorProvider<T> processorProvider, long threadId, T configurationObject, ProcessorThreadListener threadStatusChangeListener, ReplayData<T> replayData) {
+        SimulationContext simulationContext = new SimulationContext(replayData.getCycleData());
+        return new ProcessorThreadImpl<>(
+                processorProvider,
+                simulationThreadGroup,
+                replayData.getThreadId(),
+                replayData.getConfigurationObject(),
+                simulationContext,
+                processorScheduler,
+                simulationContext,
+                simulationContext.processorEndTimeMillis()
+        );
     }
 
     @Override
@@ -54,4 +68,5 @@ public class ProcessorThreadFactoryImpl implements ProcessorThreadFactory {
     private static String threadGroupName(Class pp) {
         return pp.getSimpleName().toLowerCase().replace("processorprovider", "");
     }
+
 }
